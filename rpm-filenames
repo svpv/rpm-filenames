@@ -12,7 +12,7 @@ mm=$(rsync -n $M:: |cut -f1)
 rsync1()
 {
 	rsync -n -az --compress-level=9 --{con,}timeout=10 "$@" |
-	perl -lne 's#.*/##; print if /\.rpm$/' |sort -u
+	perl -lne 's#.*/##; s#.* ##; print if /\.rpm$/' |sort -u
 }
 
 rc=

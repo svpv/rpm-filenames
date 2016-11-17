@@ -1,0 +1,33 @@
+#!/bin/sh -efu
+# Obtain rpm filenames from mirror.yandex.ru.
+# This includes CentOS, Fedora, OpenSUSE and a few other distros.
+
+set -o pipefail
+
+mkdir -p m
+
+M=mirror.yandex.ru
+mm=$(rsync -n $M:: |cut -f1)
+
+rsync1()
+{
+	rsync -n -az --compress-level=9 --{con,}timeout=10 "$@" |
+	perl -lne 's#.*/##; print if /\.rpm$/' |sort -u
+}
+
+rc=
+
+for m in $mm; do
+	[ -s m/$m ] && continue
+	{ rsync1 $M::$m >m/.out ||
+	  rsync1 $M::$m >m/.put ||
+	  { [ -s m/.out ] && cmp -s m/.out m/.put; }; } &&
+		{ echo >&2 ok: $m; } ||
+		{ echo >&2 failed: $m; rc=1; continue; }
+	[ -s m/.out ] && mv m/.out m/$m
+done
+
+set +f
+wc -l m/*
+sort -mu m/* |zstd -6 >rpm.filenames.zst
+exit $rc
